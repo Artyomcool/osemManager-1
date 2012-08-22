@@ -31,6 +31,7 @@ public abstract class PersistenceService {
 		IndexResponse result =  getClient().prepareIndex(getIndexName(clazz), getTypeName(clazz), id)
 			.setSource(JSON.serialize(entity))
 			.setCreate(create)
+			.setRefresh(true)
 			.execute()
 			.actionGet();
 		if (result.getId()==null || result.getId().isEmpty()) {
