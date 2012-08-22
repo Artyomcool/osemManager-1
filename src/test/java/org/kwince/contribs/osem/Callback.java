@@ -34,7 +34,7 @@ public class Callback {
     }
     
     @PreOsemRead
-    public void preRead(Object object) {
+    public void preRead(String id) {
        	preRead = true;
     }
     	

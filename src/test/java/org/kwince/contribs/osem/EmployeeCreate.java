@@ -1,9 +1,7 @@
 package org.kwince.contribs.osem;
 
-import org.kwince.contribs.osem.annotations.EventListener;
 import org.kwince.contribs.osem.annotations.Id;
 
-@EventListener(Callback.class)
 public class EmployeeCreate {
     @Id
 	private String id;

@@ -2,49 +2,57 @@ package org.kwince.contribs.osem;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 
-import java.util.Date;
 import java.util.List;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.kwince.contribs.osem.annotations.Id;
-
+import org.kwince.contribs.osem.common.ElasticClientFactory;
 import org.kwince.contribs.osem.dao.OsemManager;
 import org.kwince.contribs.osem.dao.OsemMangerFactory;
+import org.kwince.contribs.osem.event.EventDispatcher;
 import org.kwince.contribs.osem.exceptions.OsemException;
 
 public class IndexTest {
 	
-	OsemMangerFactory factory;
-	OsemManager osem;
-	String id;
+	static OsemManager osem;
 	Employee emp;
 	
-	@Before
-    public void initialize() {
-		factory = new OsemMangerFactory();
+	@BeforeClass
+	public static void setUpGlobal(){
+		OsemMangerFactory factory = new OsemMangerFactory();
+    	
+    	factory.setElastic(new ElasticClientFactory()
+    			.setClusterName("elasticsearch")
+    			.setNodeClient(false)
+    			.setNodeLocal(false));
+    	
+    	factory.setDispatcher(new EventDispatcher());
+    	
 		osem = factory.createOsemManager();
-		
-		id = String.valueOf(new Date().getTime());
-		emp = new Employee("John");
-		
-		emp.setId(id);
-        osem.create(emp);
+	}
+	
+	@Before
+    public void setUp() {
+        emp = osem.create(new Employee("John"));
     }
 	
 	@After
     public void cleanUp() {
 		
-		if (id!=null) {
-    		emp.setId(id);
+		if (emp!=null) {
             osem.delete(emp);
         }
-    	
-    	factory.close();
     }
+	
+	@AfterClass
+	public static void cleanUpGlobal(){
+    	osem.close();
+	}
 	
 	@Test
 	public void INDEX_EXIST() {
@@ -52,7 +60,7 @@ public class IndexTest {
 		String actualError = null;
     	
 		String query = "{\"match_all\": {}}";
-	    List<Object> list = null;
+	    List<Employee> list = null;
 	    
 		try {
 			list = osem.find(query, Employee.class);
@@ -72,7 +80,7 @@ public class IndexTest {
 		
 		Employee emp2 = new Employee();
 		try {
-			emp2 = (Employee) osem.read(emp);
+			emp2 = (Employee) osem.read(emp.getId(), Employee.class);
 		} catch (OsemException actualException) {
 			actualError = actualException.getMessage();
 		}
@@ -84,24 +92,17 @@ public class IndexTest {
 		
 	@Test
 	public void INDEX_NOT_EXIST() {
-		final String expectedError = "Invalid type. This type does not exist";
-		String actualError = null;
     	
 		String query = "{\"match_all\": {}}";
-	    List<Object> list = null;
+	    List<Car> list = null;
 	    
-		try {
-			list = osem.find(query, Car.class);
-		} catch (OsemException actualException) {
-			actualError = actualException.getMessage();
-		}
-		
-		assertEquals(expectedError, actualError);
-		assertNull(list);
+		list = osem.find(query, Car.class);
+			
+		assertEquals(list.size(),0);
 		System.out.println(">>>>>>>>> Success - test 'INDEX_NOT_EXIST' <<<<<<<<<");
     }
 	
-	public class Car {
+	static class Car {
 		@Id
 		private String id;
 		private String name;
