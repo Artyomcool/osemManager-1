@@ -84,7 +84,7 @@ public abstract class PersistenceService {
 		if(client == null){
 			client = node.client();
 			//It is important to wait until shards become available
-			client.admin().cluster().health(new ClusterHealthRequest().waitForYellowStatus()).actionGet();
+			//client.admin().cluster().health(new ClusterHealthRequest().waitForGreenStatus()).actionGet();
 		}
 		return this.client;
 	}

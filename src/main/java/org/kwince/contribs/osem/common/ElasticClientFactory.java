@@ -14,13 +14,13 @@ public class ElasticClientFactory {
 	
 	private String host;
 	private String port;
-	private String clientTransportSniff;
+	private Boolean clientTransportSniff;
 	
 	public Node createNode() {
 						
 		Builder settings = ImmutableSettings.settingsBuilder();
 		
-		if(nodeClient != null){
+		if(host == null){
 			settings.put("node.client", nodeClient);
 			settings.put("cluster.name", clusterName);
 			settings.put("node.local", nodeLocal);
@@ -64,7 +64,7 @@ public class ElasticClientFactory {
 		return this;
 	}
 
-	public ElasticClientFactory setClientTransportSniff(String clientTransportSniff) {
+	public ElasticClientFactory setClientTransportSniff(Boolean clientTransportSniff) {
 		this.clientTransportSniff = clientTransportSniff;
 		return this;
 	}

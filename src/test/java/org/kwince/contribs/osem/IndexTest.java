@@ -26,10 +26,12 @@ public class IndexTest {
 	public static void setUpGlobal(){
 		OsemMangerFactory factory = new OsemMangerFactory();
     	
+
     	factory.setElastic(new ElasticClientFactory()
     			.setClusterName("elasticsearch")
-    			.setNodeClient(false)
-    			.setNodeLocal(true));
+    			.setClientTransportSniff(true)
+    			.setHost("localhost")
+    			.setPort("9300"));
     	
     	factory.setDispatcher(new EventDispatcher());
     	
