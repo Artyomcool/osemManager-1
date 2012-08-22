@@ -1,11 +1,7 @@
 package org.kwince.contribs.osem.model;
 
-import org.kwince.contribs.osem.annotations.EventListener;
 import org.kwince.contribs.osem.annotations.Id;
 
-import org.kwince.contribs.osem.app.PersonMessage;
-
-@EventListener(PersonMessage.class)
 public class Person {
     
 	@Id
@@ -65,5 +61,12 @@ public class Person {
 
 	public String getId() {
 		return id;
+	}
+
+	@Override
+	public String toString() {
+		return "Person [id=" + id + ", firstName=" + firstName
+				+ ", middleInitial=" + middleInitial + ", lastName=" + lastName
+				+ ", address=" + address + "]";
 	}
 }

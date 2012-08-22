@@ -3,17 +3,12 @@ package org.kwince.contribs.osem.model;
 import java.util.ArrayList;
 import java.util.Collection;
 
-import org.bson.types.ObjectId;
-import org.kwince.contribs.osem.annotations.EventListener;
 import org.kwince.contribs.osem.annotations.Id;
 
-import org.kwince.contribs.osem.app.CompanyMessage;
-
-@EventListener(CompanyMessage.class)
 public class Company {
     
 	@Id
-	private ObjectId id;
+	private String id;
     
 	private String name;
     private Address address;
@@ -47,11 +42,11 @@ public class Company {
         this.employees = employees;
     }
  
-    public ObjectId getId() {
+    public String getId() {
         return id;
     }
  
-    public void setId(final ObjectId id) {
+    public void setId(final String id) {
         this.id = id;
     }
  
@@ -70,4 +65,10 @@ public class Company {
     public void fire(final Person p) {
         getEmployees().remove(p);
     }
+
+	@Override
+	public String toString() {
+		return "Company [id=" + id + ", name=" + name + ", address=" + address
+				+ ", employees=" + employees + "]";
+	}
 }

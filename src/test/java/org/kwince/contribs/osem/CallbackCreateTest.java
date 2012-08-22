@@ -10,9 +10,10 @@ import junit.framework.Assert;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
+import org.kwince.contribs.osem.common.ElasticClientFactory;
 import org.kwince.contribs.osem.dao.OsemManager;
 import org.kwince.contribs.osem.dao.OsemMangerFactory;
+import org.kwince.contribs.osem.event.EventDispatcher;
 
 public class CallbackCreateTest {
 	
@@ -24,6 +25,17 @@ public class CallbackCreateTest {
     @Before
     public void setUp() {
     	factory = new OsemMangerFactory();
+    	
+    	factory.setElastic(new ElasticClientFactory()
+    			.setClusterName("elasticsearch")
+    			.setNodeClient(false)
+    			.setNodeLocal(true));
+    	
+    	EventDispatcher dispatcher = new EventDispatcher();
+    	factory.setDispatcher(dispatcher);
+    	
+    	dispatcher.addHandler(EmployeeCreate.class, new Callback());
+    	
     	osem = factory.createOsemManager();
         emp = new EmployeeCreate();
     	id = String.valueOf(new Date().getTime());
@@ -35,7 +47,7 @@ public class CallbackCreateTest {
     public void cleanUp() {
     	System.out.println("======================================= clean up");
         osem.delete(emp);
-        factory.close();
+    	osem.close();
         System.out.println("======================================= cleaned up");
     }
     

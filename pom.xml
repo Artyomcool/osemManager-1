@@ -1,77 +1,76 @@
 <?xml version="1.0"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<artifactId>kwince-parent</artifactId>
-		<groupId>com.kwince</groupId>
-		<version>0.0.2</version>
-	</parent>
 	<groupId>com.kwince.contribs</groupId>
 	<artifactId>osemManager</artifactId>
-	<version>0.0.2-SNAPSHOT</version>
+	<version>0.0.3-SNAPSHOT</version>
 	<name>osemManager</name>
 	<url>http://github.com/kwince/osemManager</url>
 
+	<properties>
+		<java-version>1.6</java-version>
+	</properties>
+
 	<issueManagement>
 		<system>github</system>
-		<url>https://github.com/kwince/osemManager/issues</url>
+		<url>https://github.com/Artyomcool/osemManager-1/issues</url>
 	</issueManagement>
 
 	<scm>
-		<connection>scm:git:git@github.com:kwince/osemManager.git</connection>
-		<developerConnection>scm:git:git@github.com:kwince/osemManager.git</developerConnection>
-		<url>scm:git:git@github.com:kwince/osemManager.git</url>
+		<connection>scm:git:git@github.com:Artyomcool/osemManager-1.git</connection>
+		<developerConnection>scm:git:git@github.com:Artyomcool/osemManager-1.git</developerConnection>
+		<url>scm:git:git@github.com:Artyomcool/osemManager-1.git</url>
 	</scm>
+	<repositories>
+	    <repository>
+	      <id>central</id>
+	      <name>Maven Repository Switchboard</name>
+	      <url>http://repo1.maven.org/maven2</url>
+	    </repository>
+		<repository>
+	      <id>releases</id>
+	      <name>Releases</name>
+	      <url>https://oss.sonatype.org/content/repositories/releases</url>
+	    </repository>
+    </repositories>
 
 	<dependencies>
-		<dependency>
-			<groupId>org.mongodb</groupId>
-			<artifactId>bson</artifactId>
-		</dependency>
 
-		<dependency>
-			<groupId>org.codehaus.jackson</groupId>
-			<artifactId>jackson-mapper-asl</artifactId>
-		</dependency>
+	    <dependency>
+	      <groupId>com.google.code.gson</groupId>
+	      <artifactId>gson</artifactId>
+	      <version>2.2.2</version>
+	      <scope>compile</scope>
+	    </dependency>
 
-		<dependency>
-			<groupId>org.elasticsearch</groupId>
-			<artifactId>elasticsearch</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>commons-lang</groupId>
-			<artifactId>commons-lang</artifactId>
-		</dependency>
-
+	 	<dependency>
+	      <groupId>org.elasticsearch</groupId>
+	      <artifactId>elasticsearch</artifactId>
+			<version>0.19.7</version>
+      	</dependency>
+		
+		
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
-			<scope>test</scope>
+			<version>4.4</version>
 		</dependency>
-
-		<dependency>
-			<groupId>org.jmock</groupId>
-			<artifactId>jmock</artifactId>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>org.jmock</groupId>
-			<artifactId>jmock-junit4</artifactId>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>org.hamcrest</groupId>
-			<artifactId>hamcrest-api</artifactId>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>org.hamcrest</groupId>
-			<artifactId>hamcrest-library</artifactId>
-			<scope>test</scope>
-		</dependency>
+		
 	</dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.3.2</version>
+                <configuration>
+                    <source>1.6</source>
+                    <target>1.6</target>
+                    <compilerArgument>-Xlint:all</compilerArgument>
+                    <showWarnings>true</showWarnings>
+                    <showDeprecation>true</showDeprecation>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>
