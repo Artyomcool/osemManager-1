@@ -11,6 +11,7 @@ public class ElasticClientFactory {
 	private Boolean nodeLocal = false;
 	
 	private String clusterName;
+	private String path;
 	
 	private String host;
 	private String port;
@@ -21,17 +22,20 @@ public class ElasticClientFactory {
 		Builder settings = ImmutableSettings.settingsBuilder();
 		
 		if(host == null){
-			settings.put("node.client", nodeClient);
-			settings.put("cluster.name", clusterName);
-			settings.put("node.local", nodeLocal);
+			settings.put("node.client", nodeClient)
+				.put("cluster.name", clusterName)
+				.put("node.local", nodeLocal);
 		}else{
-			settings.put("host", host);
-			settings.put("port", port);
-			settings.put("client.transport.sniff", clientTransportSniff);
-			settings.put("cluster.name", clusterName);
+			settings.put("host", host)
+				.put("port", port)
+				.put("client.transport.sniff", clientTransportSniff)
+				.put("cluster.name", clusterName);
 		}
-		
+
 		settings.put("index.number_of_shards", 16);
+		
+		if(path!=null)
+			settings.put("path.home", path);
 		
 		settings.build();
 
@@ -66,6 +70,11 @@ public class ElasticClientFactory {
 
 	public ElasticClientFactory setClientTransportSniff(Boolean clientTransportSniff) {
 		this.clientTransportSniff = clientTransportSniff;
+		return this;
+	}
+
+	public ElasticClientFactory setPath(String path) {
+		this.path = path;
 		return this;
 	}
 
