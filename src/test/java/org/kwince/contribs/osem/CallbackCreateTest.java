@@ -27,10 +27,7 @@ public class CallbackCreateTest {
     	factory = new OsemMangerFactory();
     	
     	factory.setElastic(new ElasticClientFactory()
-    			.setClusterName("elasticsearch")
-    			.setClientTransportSniff(true)
-    			.setHost("localhost")
-    			.setPort("9300"));
+    			.setProperties("classpath:osem.properties"));
     	
     	EventDispatcher dispatcher = new EventDispatcher();
     	factory.setDispatcher(dispatcher);

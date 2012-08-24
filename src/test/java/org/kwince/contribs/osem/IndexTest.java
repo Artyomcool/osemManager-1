@@ -28,10 +28,7 @@ public class IndexTest {
     	
 
     	factory.setElastic(new ElasticClientFactory()
-    			.setClusterName("elasticsearch")
-    			.setClientTransportSniff(true)
-    			.setHost("localhost")
-    			.setPort("9300"));
+		.setProperties("classpath:osem.properties"));
     	
     	factory.setDispatcher(new EventDispatcher());
     	

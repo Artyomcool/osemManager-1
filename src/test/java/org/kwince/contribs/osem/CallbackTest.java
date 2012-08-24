@@ -3,8 +3,6 @@ package org.kwince.contribs.osem;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.util.Date;
-
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -26,10 +24,7 @@ public class CallbackTest {
     	OsemMangerFactory factory = new OsemMangerFactory();
 
     	factory.setElastic(new ElasticClientFactory()
-    			.setClusterName("elasticsearch")
-    			.setClientTransportSniff(true)
-    			.setHost("localhost")
-    			.setPort("9300"));
+		.setProperties("classpath:osem.properties"));
     	
     	EventDispatcher dispatcher = new EventDispatcher();
     	factory.setDispatcher(dispatcher);
