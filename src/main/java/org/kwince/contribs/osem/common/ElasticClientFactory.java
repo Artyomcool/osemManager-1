@@ -38,7 +38,7 @@ public class ElasticClientFactory {
 		}
 
 		settings.put("index.number_of_shards", 4);
-		
+
 		if(path!=null)
 			settings.put("path.home", path);
 		
