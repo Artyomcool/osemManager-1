@@ -10,5 +10,5 @@ import java.lang.annotation.Target;
 @Documented @Inherited
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
-public @interface PreOsemCreate {
+public @interface PreOsemSave {
 }

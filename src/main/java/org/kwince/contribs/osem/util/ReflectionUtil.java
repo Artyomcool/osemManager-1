@@ -2,7 +2,7 @@ package org.kwince.contribs.osem.util;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -10,12 +10,28 @@ import java.util.List;
 import java.util.Set;
 
 import org.kwince.contribs.osem.annotations.Id;
+import org.kwince.contribs.osem.exceptions.OsemException;
 
 public class ReflectionUtil
 {
-	public static Field[] getAnnotatedFileds(Class<?> clazz, Class<? extends Annotation> annotationClass) {
+	public static List<Field> getFields(Class<?> clazz) {
+		List<Field> result = new ArrayList<Field>();
+		while(clazz != Object.class){
+			Field[] fields = clazz.getDeclaredFields();
+			for(Field f:fields){
+				if((f.getModifiers() & (Modifier.FINAL | Modifier.STATIC | Modifier.TRANSIENT)) != 0)
+					continue;
+				f.setAccessible(true);
+				result.add(f);
+			}
+			clazz = clazz.getSuperclass();
+		}
+		return result;
+	}
+	
+	public static List<Field> getAnnotatedFileds(Class<?> clazz, Class<? extends Annotation> annotationClass) {
 		
-		Field[] allFields = clazz.getDeclaredFields();
+		List<Field> allFields = getFields(clazz);
 		List<Field> annotatedFields = new LinkedList<Field>();
 
 		for (Field field : allFields) {
@@ -23,49 +39,73 @@ public class ReflectionUtil
 				annotatedFields.add(field);
 		}
 
-		return annotatedFields.toArray(new Field[annotatedFields.size()]);
+		return annotatedFields;
+	}
+		
+	private static Field getIdField(Class<?> clazz){
+		
+		List<Field> fields = getAnnotatedFileds(clazz, Id.class);
+		
+		if(fields.isEmpty())
+			throw new OsemException("Class "+clazz.getName()+" doesn't contain an id");
+		else if(fields.size() > 1)
+			throw new OsemException("Class "+clazz.getName()+" contains multiple ids");
+		
+		Field f = fields.get(0);
+		f.setAccessible(true);
+		
+		return f;
 	}
 	
-	private static String capitalize(String str){
-		if(str == null || str.isEmpty())
-			return str;
-		StringBuilder b = new StringBuilder(str);
-		b.setCharAt(0, Character.toUpperCase(b.charAt(0)));
-		return b.toString();
-	}
-	
-	public static String getId(Object object) throws Exception {
-		Object ret = null;
-		Method method = null;
-		Class<?> clazz = object.getClass();
-		
-		Field[] fields = getAnnotatedFileds(clazz, Id.class);
-		method = clazz.getMethod("get" + capitalize(fields[0].getName()), new Class[] {});
-		ret = method.invoke(object, new Object[] {});
-		
-		if (ret==null) {
-			return null;
+	public static String getId(Object object) {
+		try {
+			return (String)getIdField(object.getClass()).get(object);
+		} catch (SecurityException e) {
+			throw new OsemException("Can't get Id",e);
+		} catch (IllegalArgumentException e) {
+			throw new OsemException("Can't get Id",e);
+		} catch (IllegalAccessException e) {
+			throw new OsemException("Can't get Id",e);
 		}
-		
-		String id = ret.toString();
-		if (id.length()==0) {
-			throw new RuntimeException("Not accept Id equals empty");
-		}
-		
-		return id;
 	}
 	
-	public static void setId(Object object,String id) throws Exception{
-		Class<?> clazz = object.getClass();
-		
-		Field[] fields = getAnnotatedFileds(clazz, Id.class);
-		String name = "set" + capitalize(fields[0].getName());
-		for(Method m:clazz.getMethods()){
-			if(m.getName().equals(name)){
-				Class<?> param = m.getParameterTypes()[0];
-				Object _id = param == String.class ? id : param.getMethod("valueOf", String.class).invoke(null, id);
-				m.invoke(object, _id);
+	public static void setId(Object object,String id) {
+		try {
+			getIdField(object.getClass()).set(object,id);
+		} catch (SecurityException e) {
+			throw new OsemException("Can't get Id",e);
+		} catch (IllegalArgumentException e) {
+			throw new OsemException("Can't get Id",e);
+		} catch (IllegalAccessException e) {
+			throw new OsemException("Can't get Id",e);
+		}
+	}
+
+	public static void trySetId(Object ret, String id) {
+		if(!getAnnotatedFileds(ret.getClass(), Id.class).isEmpty())
+			setId(ret,id);
+	}
+
+	public static String ensureId(Object entity) {
+		try {
+			
+			Field f = getIdField(entity.getClass());
+			
+			String id = (String)f.get(entity); 
+			
+			if(id == null){
+				id = GuidComb.generate();
+				f.set(entity, id);
 			}
+			
+			return id;
+			
+		} catch (SecurityException e) {
+			throw new OsemException("Can't get Id",e);
+		} catch (IllegalArgumentException e) {
+			throw new OsemException("Can't get Id",e);
+		} catch (IllegalAccessException e) {
+			throw new OsemException("Can't get Id",e);
 		}
 	}
 	

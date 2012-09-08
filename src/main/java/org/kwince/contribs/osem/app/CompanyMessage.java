@@ -1,19 +1,19 @@
 package org.kwince.contribs.osem.app;
 
-import org.kwince.contribs.osem.annotations.PostOsemCreate;
+import org.kwince.contribs.osem.annotations.PostOsemSave;
 import org.kwince.contribs.osem.annotations.PostOsemRead;
-import org.kwince.contribs.osem.annotations.PreOsemCreate;
+import org.kwince.contribs.osem.annotations.PreOsemSave;
 import org.kwince.contribs.osem.annotations.PreOsemRead;
 import org.kwince.contribs.osem.model.Company;
 
 public class CompanyMessage {
 	
-	@PreOsemCreate
+	@PreOsemSave
 	public void preCreate(Company obj) {
 		System.out.println("pre create: " + obj);
 	}
 	
-	@PostOsemCreate
+	@PostOsemSave
 	public void postCreate(Company obj) {
 		System.out.println("post create: " + obj);
 	}

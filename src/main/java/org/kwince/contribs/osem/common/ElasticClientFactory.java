@@ -4,8 +4,11 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
 
+import org.elasticsearch.client.Client;
+import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.ImmutableSettings.Builder;
+import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
 import org.kwince.contribs.osem.exceptions.OsemException;
@@ -22,30 +25,61 @@ public class ElasticClientFactory {
 	private String port;
 	private Boolean clientTransportSniff;
 	
-	public Node createNode() {
+	public ClientWrapper createNode() {
 						
 		Builder settings = ImmutableSettings.settingsBuilder();
+
+		settings.put("index.number_of_shards", 16);
+		settings.put("index.number_of_replicas", 1);
+
+		if(path!=null)
+			settings.put("path.home", path);
 		
 		if(host == null){
 			settings.put("node.client", nodeClient)
 				.put("cluster.name", clusterName)
 				.put("node.local", nodeLocal);
 		}else{
-			settings.put("host", host)
-				.put("port", port)
+			settings
 				.put("client.transport.sniff", clientTransportSniff)
 				.put("cluster.name", clusterName);
+			
+			final Client client = new TransportClient(settings)
+							.addTransportAddress(new InetSocketTransportAddress(host, Integer.valueOf(port)));
+			return new ClientWrapper() {
+				
+				@Override
+				public Client getClient() {
+					return client;
+				}
+				
+				@Override
+				public void close() {
+					client.close();
+				}
+			};
 		}
-
-		settings.put("index.number_of_shards", 4);
-
-		if(path!=null)
-			settings.put("path.home", path);
 		
-		settings.build();
-
 		NodeBuilder nb = NodeBuilder.nodeBuilder().settings(settings);
-		return nb.node();
+		final Node n=nb.node();
+		
+		return new ClientWrapper() {
+			
+			private Client client;
+			
+			@Override
+			public Client getClient() {
+				if(client == null)
+					client = n.client();
+				return client;
+			}
+			
+			@Override
+			public void close() {
+				if(client!=null)client.close();
+				n.close();
+			}
+		};
 	}
 	
 	public ElasticClientFactory setNodeClient(Boolean nodeClient) {
@@ -104,7 +138,7 @@ public class ElasticClientFactory {
 		clusterName = p.getProperty("osem.clusterName", clusterName);
 		host = p.getProperty("osem.host", host);
 		port = p.getProperty("osem.port", port);
-		path = p.getProperty("osem.path", path);
+		this.path = p.getProperty("osem.path", this.path);
 		
 		return this;
 	}

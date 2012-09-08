@@ -3,8 +3,9 @@ package org.kwince.contribs.osem;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-import java.util.List;
-
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.indices.IndexMissingException;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -14,8 +15,8 @@ import org.kwince.contribs.osem.annotations.Id;
 import org.kwince.contribs.osem.common.ElasticClientFactory;
 import org.kwince.contribs.osem.dao.OsemManager;
 import org.kwince.contribs.osem.dao.OsemMangerFactory;
+import org.kwince.contribs.osem.dao.SearchResult;
 import org.kwince.contribs.osem.event.EventDispatcher;
-import org.kwince.contribs.osem.exceptions.OsemException;
 
 public class IndexTest {
 	
@@ -37,15 +38,13 @@ public class IndexTest {
 	
 	@Before
     public void setUp() {
-        emp = osem.create(new Employee("John"));
+        emp = osem.save(new Employee("John"),true);
     }
 	
 	@After
     public void cleanUp() {
-		
-		if (emp!=null) {
-            osem.delete(emp);
-        }
+		for(Employee e:osem.find(QueryBuilders.matchAllQuery(), 0, 1000, Employee.class).result())
+			osem.delete(e,true);
     }
 	
 	@AfterClass
@@ -55,50 +54,25 @@ public class IndexTest {
 	
 	@Test
 	public void INDEX_EXIST() {
-		final String expectedError = null;
-		String actualError = null;
-    	
-		String query = "{\"match_all\": {}}";
-	    List<Employee> list = null;
-	    
-		try {
-			list = osem.find(query, Employee.class);
-		} catch (OsemException actualException) {
-			actualError = actualException.getMessage();
-		}
-		
-		assertEquals(expectedError, actualError);
-		assertNotNull(list);
-		System.out.println(">>>>>>>>> Success - test 'INDEX_EXIST_2' <<<<<<<<<");
+		SearchResult<Employee> result = osem.find(QueryBuilders.matchAllQuery(), 0, 1000, Employee.class);
+				
+		assertNotNull(result);
+		assertEquals(result.total(), 1);
+		assertEquals(result.result().get(0).getId(),emp.getId());
     }
 	
 	@Test
 	public void INDEX_EXIST_2() {
-		final String expectedError = null;
-		String actualError = null;
-		
-		Employee emp2 = new Employee();
-		try {
-			emp2 = (Employee) osem.read(emp.getId(), Employee.class);
-		} catch (OsemException actualException) {
-			actualError = actualException.getMessage();
-		}
-		
-		assertEquals(expectedError, actualError);
-		assertNotNull(emp2);
-		System.out.println(">>>>>>>>> Success - test 'INDEX_EXIST_2' <<<<<<<<<");
+		Employee emp2 = osem.read(emp.getId(), Employee.class);
+		assertEquals(emp2.getId(),emp.getId());
     }
 		
-	@Test
+	@Test(expected=IndexMissingException.class)
 	public void INDEX_NOT_EXIST() {
-    	
-		String query = "{\"match_all\": {}}";
-	    List<Car> list = null;
-	    
-		list = osem.find(query, Car.class);
-			
-		assertEquals(list.size(),0);
-		System.out.println(">>>>>>>>> Success - test 'INDEX_NOT_EXIST' <<<<<<<<<");
+
+	    QueryBuilder query = QueryBuilders.matchAllQuery();
+
+    	osem.find(query, 0, 1000, Car.class);
     }
 	
 	static class Car {

@@ -6,6 +6,7 @@ import com.google.gson.ExclusionStrategy;
 import com.google.gson.FieldAttributes;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
 
 public class JSON {
 
@@ -34,5 +35,9 @@ public class JSON {
     public static final <T> T deserialize(String json, Class<T> classType) {
 		return gson.fromJson(json, classType);
 	}
+    
+    public static final JsonElement toTree(Object e){
+    	return gson.toJsonTree(e);
+    }
 
 }

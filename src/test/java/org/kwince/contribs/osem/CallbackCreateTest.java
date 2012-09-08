@@ -7,6 +7,7 @@ import java.util.Date;
 
 import junit.framework.Assert;
 
+import org.elasticsearch.index.query.QueryBuilders;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -43,10 +44,9 @@ public class CallbackCreateTest {
     
     @After
     public void cleanUp() {
-    	System.out.println("======================================= clean up");
-        osem.delete(emp);
+		for(Employee e:osem.find(QueryBuilders.matchAllQuery(), 0, 1000, Employee.class).result())
+			osem.delete(e,true);
     	osem.close();
-        System.out.println("======================================= cleaned up");
     }
     
     @Test
@@ -54,12 +54,10 @@ public class CallbackCreateTest {
     {
     	assertFalse(Callback.preCreate);
         emp.setName("Thatcher");
-        EmployeeCreate result = (EmployeeCreate) osem.create(emp);
+        EmployeeCreate result = (EmployeeCreate) osem.save(emp,true);
         assertTrue(Callback.preCreate);
     
         Assert.assertNotNull(result);
-        
-        System.out.println(">>>>>>>>> Success - test 'PRE_CREATE_TEST' <<<<<<<<<");
     }
     
     @Test
@@ -67,12 +65,10 @@ public class CallbackCreateTest {
     {
     	assertFalse(Callback.postCreate);
         emp.setName("Thatcher I");
-        EmployeeCreate result = (EmployeeCreate) osem.create(emp);
+        EmployeeCreate result = (EmployeeCreate) osem.save(emp,true);
         assertTrue(Callback.postCreate);
     
         Assert.assertNotNull(result);
-        
-        System.out.println(">>>>>>>>> Success - test 'POST_CREATE_TEST' <<<<<<<<<");
     }
     
     void resetStatus() {

@@ -12,14 +12,12 @@ import java.util.Map;
 import java.util.Set;
 
 import org.elasticsearch.common.collect.Sets;
-import org.kwince.contribs.osem.annotations.PostOsemCreate;
+import org.kwince.contribs.osem.annotations.PostOsemSave;
 import org.kwince.contribs.osem.annotations.PostOsemDelete;
 import org.kwince.contribs.osem.annotations.PostOsemRead;
-import org.kwince.contribs.osem.annotations.PostOsemUpdate;
-import org.kwince.contribs.osem.annotations.PreOsemCreate;
+import org.kwince.contribs.osem.annotations.PreOsemSave;
 import org.kwince.contribs.osem.annotations.PreOsemDelete;
 import org.kwince.contribs.osem.annotations.PreOsemRead;
-import org.kwince.contribs.osem.annotations.PreOsemUpdate;
 import org.kwince.contribs.osem.exceptions.OsemException;
 import org.kwince.contribs.osem.util.ReflectionUtil;
 
@@ -32,13 +30,11 @@ public class EventDispatcher {
 	
 	@SuppressWarnings("unchecked")
 	private final static List<Class<? extends Annotation>> lifecycleAnnotations = Arrays.asList(
-			PostOsemCreate.class,
+			PostOsemSave.class,
 			PostOsemRead.class,
-			PostOsemUpdate.class,
 			PostOsemDelete.class,
-			PreOsemCreate.class,
+			PreOsemSave.class,
 			PreOsemRead.class,
-			PreOsemUpdate.class,
 			PreOsemDelete.class);
 	
 	private final static Set<Class<? extends Annotation>> idAnnotations = Sets.newHashSet();
