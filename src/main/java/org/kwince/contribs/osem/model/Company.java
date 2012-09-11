@@ -1,7 +1,7 @@
 package org.kwince.contribs.osem.model;
 
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.List;
 
 import org.kwince.contribs.osem.annotations.Id;
 
@@ -12,12 +12,12 @@ public class Company {
     
 	private String name;
     private Address address;
-    private Collection<Person> employees;
+    private List<Person> employees;
  
     public Company() {
     }
  
-    public Company(final String name, final Address address, final Collection<Person> employees) {
+    public Company(final String name, final Address address, final List<Person> employees) {
         setName(name);
         setAddress(address);
         setEmployees(employees);
@@ -31,14 +31,14 @@ public class Company {
         this.address = address;
     }
  
-    public Collection<Person> getEmployees() {
+    public List<Person> getEmployees() {
         if (employees == null) {
             employees = new ArrayList<Person>();
         }
         return employees;
     }
  
-    public void setEmployees(final Collection<Person> employees) {
+    public void setEmployees(final List<Person> employees) {
         this.employees = employees;
     }
  

@@ -6,6 +6,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -13,25 +14,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.index.query.MatchAllQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.WrapperQueryBuilder;
 import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
 import org.kwince.contribs.osem.annotations.Id;
-import org.kwince.contribs.osem.annotations.PostOsemSave;
 import org.kwince.contribs.osem.annotations.PostOsemDelete;
 import org.kwince.contribs.osem.annotations.PostOsemRead;
-import org.kwince.contribs.osem.annotations.PreOsemSave;
+import org.kwince.contribs.osem.annotations.PostOsemSave;
 import org.kwince.contribs.osem.annotations.PreOsemDelete;
 import org.kwince.contribs.osem.annotations.PreOsemRead;
+import org.kwince.contribs.osem.annotations.PreOsemSave;
 import org.kwince.contribs.osem.common.ClientWrapper;
 import org.kwince.contribs.osem.event.EventDispatcher;
 import org.kwince.contribs.osem.exceptions.OsemException;
@@ -43,6 +41,8 @@ class OsemManagerImpl implements OsemManager {
 	private EventDispatcher dispatcher;
 	
 	private ClientWrapper client;
+	
+	private Map<Class<?>,String> indexNames = new HashMap<Class<?>,String>();
 	
 	OsemManagerImpl (ClientWrapper client,EventDispatcher dispatcher) {
 		this.client = client;
@@ -75,7 +75,7 @@ class OsemManagerImpl implements OsemManager {
 		E result = null;
 		dispatcher.publishId(PreOsemRead.class, id, clazz);
 		Validator.validate(clazz);
-		checkIndex(clazz);
+		ensureIndex(clazz);
 		
 		try {
 			result = readInternal(id, clazz, new HashMap<String, Object>());
@@ -97,7 +97,7 @@ class OsemManagerImpl implements OsemManager {
 		Class<?> clazz = entity.getClass();
 		dispatcher.publish(PreOsemDelete.class, entity);
 		Validator.validate(clazz);
-		checkIndex(clazz);
+		ensureIndex(clazz);
 		
 		delete(entity, clazz, refresh);
 		dispatcher.publish(PostOsemDelete.class, entity);
@@ -186,6 +186,19 @@ class OsemManagerImpl implements OsemManager {
 		}
 	}
 	
+	private Class<?> getFirstGenericClass(Type type){
+		
+		if(!(type instanceof ParameterizedType))
+			throw new OsemException("Wrong List parameter type: "+type);
+		
+	    ParameterizedType aType = (ParameterizedType) type;
+	    Type[] fieldArgTypes = aType.getActualTypeArguments();
+    	//TODO list of lists
+        Class<?> fieldArgClass = (Class<?>) fieldArgTypes[0];
+        
+		return fieldArgClass;
+	}
+	
 	private Object parse(Object entity,Type type,Map<String,Object> cache, String id){
 				
 		if(entity == null)return null;
@@ -197,14 +210,7 @@ class OsemManagerImpl implements OsemManager {
 			return entity;
 
 		if(entity instanceof List){
-			
-			if(!(type instanceof ParameterizedType))
-				throw new OsemException("Wrong List parameter type: "+type);
-			
-		    ParameterizedType aType = (ParameterizedType) type;
-		    Type[] fieldArgTypes = aType.getActualTypeArguments();
-	    	//TODO list of lists
-	        Class<?> fieldArgClass = (Class<?>) fieldArgTypes[0];
+	        Class<?> fieldArgClass = getFirstGenericClass(type);
 	        
 			List<?> l = (List<?>) entity;
 			List<Object> r = new ArrayList<Object>(l.size());
@@ -351,6 +357,7 @@ class OsemManagerImpl implements OsemManager {
 		BulkRequestBuilder builder = client.getClient()
 				.prepareBulk().setRefresh(refresh);
 		for(MapWrapper obj:objects){
+			ensureIndex(obj.clazz);
 			builder.add(client.getClient()
 						.prepareIndex(getIndexName(obj.clazz), getTypeName(obj.clazz), obj.id)
 						.setSource(obj.map)
@@ -391,10 +398,77 @@ class OsemManagerImpl implements OsemManager {
 		builder.execute().actionGet();
 	}
 	
-	private void checkIndex(Class<?> clazz) {
-		if(!client.getClient().admin().indices().prepareExists(getIndexName(clazz)).execute().actionGet().exists())
-			throw new OsemException("Invalid type. This type does not exist");
-		client.getClient().admin().cluster().health(new ClusterHealthRequest(getIndexName(clazz)).waitForYellowStatus()).actionGet();
+	private static Map<Class<?>,String> primitives = new HashMap<Class<?>, String>();
+	static{
+		primitives.put(Integer.class, "integer");
+		primitives.put(Long.class, "long");
+		primitives.put(Float.class, "float");
+		primitives.put(Double.class, "double");
+		primitives.put(Boolean.class, "boolean");
+		primitives.put(Integer.TYPE, "integer");
+		primitives.put(Long.TYPE, "long");
+		primitives.put(Float.TYPE, "float");
+		primitives.put(Double.TYPE, "double");
+		primitives.put(Boolean.TYPE, "boolean");
+		primitives.put(String.class, "string");
+	}
+	
+	private Map<String,Object> toType(String type){
+		return toObjectType("type",type);
+	}
+	
+	private Map<String,Object> toObjectType(String name,Object type){
+		Map<String,Object> map = new HashMap<String, Object>();
+		map.put(name, type);
+		return map;
+	}
+	
+	private Object toType(Type f){
+		if(f instanceof ParameterizedType && Collection.class.isAssignableFrom((Class<?>)((ParameterizedType) f).getRawType()))
+			return toType(getFirstGenericClass(f));
+		Class<?> c = (Class<?>) f;
+		if(primitives.containsKey(c))
+			return toType(primitives.get(c));
+		else if(ReflectionUtil.getAnnotatedFileds(c, Id.class).isEmpty())
+			return toObjectType("properties",getMapping(c));
+		else
+			return toType("string");
+	}
+	
+	private Object getMapping(Class<?> clazz){
+		
+		Map<String,Object> map = new HashMap<String, Object>();
+		
+		for(Field f:ReflectionUtil.getFields(clazz)){
+			map.put(f.getName(), toType(f.getGenericType()));
+		}
+		
+		return map;
+	}
+	
+	private void ensureIndex(Class<?> clazz) {
+		if(indexNames.containsKey(clazz))return;
+		
+		String name = getIndexName(clazz);
+		
+		if(!client.getClient().admin().indices()
+				.prepareExists(name).execute().actionGet().exists()){
+			
+			client.getClient().admin().indices()
+				.prepareCreate(name).execute().actionGet();
+		}
+		
+		
+		Map<String,Object> src = toObjectType(name, toObjectType("properties",getMapping(clazz)));
+		System.out.println(src);
+		
+		client.getClient().admin().indices()
+			.preparePutMapping(name)
+			.setType(name)
+			.setSource(src)
+			.execute().actionGet();
+		
+		indexNames.put(clazz, name);
 	}
 
 	public String getIndexName(Class<?> clazz) {
