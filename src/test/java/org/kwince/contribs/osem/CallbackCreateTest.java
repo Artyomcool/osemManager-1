@@ -44,7 +44,7 @@ public class CallbackCreateTest {
     
     @After
     public void cleanUp() {
-		for(Employee e:osem.find(QueryBuilders.matchAllQuery(), 0, 1000, Employee.class).result())
+		for(EmployeeCreate e:osem.find(QueryBuilders.matchAllQuery(), 0, 1000, EmployeeCreate.class).result())
 			osem.delete(e,true);
     	osem.close();
     }
@@ -54,7 +54,7 @@ public class CallbackCreateTest {
     {
     	assertFalse(Callback.preCreate);
         emp.setName("Thatcher");
-        EmployeeCreate result = (EmployeeCreate) osem.save(emp,true);
+        EmployeeCreate result = osem.save(emp,true);
         assertTrue(Callback.preCreate);
     
         Assert.assertNotNull(result);

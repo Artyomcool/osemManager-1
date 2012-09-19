@@ -31,6 +31,7 @@ import org.kwince.contribs.osem.annotations.PreOsemDelete;
 import org.kwince.contribs.osem.annotations.PreOsemRead;
 import org.kwince.contribs.osem.annotations.PreOsemSave;
 import org.kwince.contribs.osem.common.ClientWrapper;
+import org.kwince.contribs.osem.common.WeakCache;
 import org.kwince.contribs.osem.event.EventDispatcher;
 import org.kwince.contribs.osem.exceptions.OsemException;
 import org.kwince.contribs.osem.util.ReflectionUtil;
@@ -38,11 +39,52 @@ import org.kwince.contribs.osem.validation.Validator;
 
 class OsemManagerImpl implements OsemManager {
 	
+	private static class Key{
+		private Class<?> clazz;
+		private String id;
+		public Key(Class<?> clazz, String id) {
+			super();
+			this.clazz = clazz;
+			this.id = id;
+		}
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + ((clazz == null) ? 0 : clazz.hashCode());
+			result = prime * result + ((id == null) ? 0 : id.hashCode());
+			return result;
+		}
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			Key other = (Key) obj;
+			if (clazz == null) {
+				if (other.clazz != null)
+					return false;
+			} else if (!clazz.equals(other.clazz))
+				return false;
+			if (id == null) {
+				if (other.id != null)
+					return false;
+			} else if (!id.equals(other.id))
+				return false;
+			return true;
+		}
+	}
+	
 	private EventDispatcher dispatcher;
 	
 	private ClientWrapper client;
 	
 	private Map<Class<?>,String> indexNames = new HashMap<Class<?>,String>();
+	
+	private WeakCache<Key, Object> consistencyCache = new WeakCache<Key, Object>();
 	
 	OsemManagerImpl (ClientWrapper client,EventDispatcher dispatcher) {
 		this.client = client;
@@ -72,7 +114,10 @@ class OsemManagerImpl implements OsemManager {
 
 	@Override
 	public <E> E read(String id, Class<E> clazz) {
-		E result = null;
+		@SuppressWarnings("unchecked")
+		E result = (E) consistencyCache.get(new Key(clazz, id));
+		if(result != null) return result;
+		
 		dispatcher.publishId(PreOsemRead.class, id, clazz);
 		Validator.validate(clazz);
 		ensureIndex(clazz);
@@ -132,9 +177,13 @@ class OsemManagerImpl implements OsemManager {
 	    	    		
 		final LinkedList<E> list = new LinkedList<E>();
 		for(SearchHit hit : searchResponse.getHits()) {
-			Map<String,Object> map = hit.sourceAsMap();
-
-			E obj = createObject(map,clazz,hit.getId());
+			@SuppressWarnings("unchecked")
+			E obj = (E) consistencyCache.get(new Key(clazz, hit.getId()));
+			
+			if(obj == null){
+				obj = createObject(hit.sourceAsMap(),clazz,hit.getId());
+				consistencyCache.put(new Key(clazz, hit.getId()), obj);
+			}
 			
 			list.add(obj);
 		}
@@ -153,6 +202,7 @@ class OsemManagerImpl implements OsemManager {
 	}
 	
 	private static class MapWrapper{
+		private Object original;
 		private Map<String,Object> map = new HashMap<String,Object>();
 		private String id;
 		private Class<?> clazz;
@@ -303,6 +353,7 @@ class OsemManagerImpl implements OsemManager {
 		MapWrapper tree = new MapWrapper();
 		
 		tree.id = ReflectionUtil.ensureId(entity);
+		tree.original = entity;
 		tree.clazz = entity.getClass();
 				
 		if(cache.containsKey(tree.id))
@@ -358,6 +409,7 @@ class OsemManagerImpl implements OsemManager {
 				.prepareBulk().setRefresh(refresh);
 		for(MapWrapper obj:objects){
 			ensureIndex(obj.clazz);
+			consistencyCache.put(new Key(obj.clazz,obj.id), obj.original);
 			builder.add(client.getClient()
 						.prepareIndex(getIndexName(obj.clazz), getTypeName(obj.clazz), obj.id)
 						.setSource(obj.map)
@@ -376,6 +428,7 @@ class OsemManagerImpl implements OsemManager {
 		
 		@SuppressWarnings("unchecked")
 		E entity = (E) parse(result.sourceAsMap(), clazz, cache, id);
+		consistencyCache.put(new Key(clazz, id), entity);
 		
 		return entity;
 	}
@@ -388,6 +441,7 @@ class OsemManagerImpl implements OsemManager {
 		BulkRequestBuilder builder = client.getClient()
 				.prepareBulk().setRefresh(true);
 		for(MapWrapper obj:objects){
+			consistencyCache.remove(new Key(obj.clazz, obj.id));
 			builder.add(client.getClient()
 						.prepareDelete(
 								getIndexName(obj.clazz),
@@ -449,6 +503,8 @@ class OsemManagerImpl implements OsemManager {
 	private void ensureIndex(Class<?> clazz) {
 		if(indexNames.containsKey(clazz))return;
 		
+		client.getClient().admin().cluster().prepareHealth().setWaitForGreenStatus().execute().actionGet();
+		
 		String name = getIndexName(clazz);
 		
 		if(!client.getClient().admin().indices()
@@ -460,11 +516,11 @@ class OsemManagerImpl implements OsemManager {
 		
 		
 		Map<String,Object> src = toObjectType(name, toObjectType("properties",getMapping(clazz)));
-		System.out.println(src);
 		
 		client.getClient().admin().indices()
 			.preparePutMapping(name)
 			.setType(name)
+			.setIndices(name)
 			.setSource(src)
 			.execute().actionGet();
 		
