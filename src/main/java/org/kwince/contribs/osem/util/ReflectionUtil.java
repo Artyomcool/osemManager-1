@@ -16,6 +16,8 @@ public class ReflectionUtil
 {
 	public static List<Field> getFields(Class<?> clazz) {
 		List<Field> result = new ArrayList<Field>();
+		if(clazz.isInterface())return result;
+		
 		while(clazz != Object.class){
 			Field[] fields = clazz.getDeclaredFields();
 			for(Field f:fields){

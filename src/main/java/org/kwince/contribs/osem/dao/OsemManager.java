@@ -17,4 +17,5 @@ public interface OsemManager {
     
 	void close();
 	void complete(Class<?> cl);
+	void dropCache();
 }

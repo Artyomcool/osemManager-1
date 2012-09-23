@@ -45,5 +45,9 @@ public class WeakCache<K,V> {
 		cleanReferences();
 		cache.remove(key);
 	}
+
+	public void clear() {
+		cache.clear();
+	}
 	
 }

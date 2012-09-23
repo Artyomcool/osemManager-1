@@ -36,7 +36,7 @@ public class ConistencyTest {
 	
 	@Before
     public void setUp() {
-        emp = osem.save(new Employee("John"),true);
+        emp = osem.save(new Employee("John1"),true);
     }
 	
 	@After
@@ -71,7 +71,7 @@ public class ConistencyTest {
 		Employee emp2 = osem.read(emp.getId(), Employee.class);
 		assertNull(emp2);
 		
-		osem.save(emp);
+		osem.save(emp,true);
 	}
 	
 

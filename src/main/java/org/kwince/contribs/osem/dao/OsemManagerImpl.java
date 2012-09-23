@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import net.sf.cglib.proxy.Enhancer;
+
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.get.GetResponse;
@@ -24,6 +26,7 @@ import org.elasticsearch.index.query.WrapperQueryBuilder;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortOrder;
 import org.kwince.contribs.osem.annotations.Id;
+import org.kwince.contribs.osem.annotations.Lazy;
 import org.kwince.contribs.osem.annotations.PostOsemDelete;
 import org.kwince.contribs.osem.annotations.PostOsemRead;
 import org.kwince.contribs.osem.annotations.PostOsemSave;
@@ -102,8 +105,7 @@ class OsemManagerImpl implements OsemManager {
 		dispatcher.publish(PreOsemSave.class, entity);
 		Validator.validate(entity.getClass());
 		try {
-			String id = ReflectionUtil.getId(entity);
-			result = mapping(id, entity, refresh);
+			result = mapping(entity, refresh);
 			dispatcher.publish(PostOsemSave.class, result);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -288,32 +290,54 @@ class OsemManagerImpl implements OsemManager {
 			
 			try {
 				Class<?> clazz = (Class<?>) type;
-				Constructor<?> constructor = clazz.getDeclaredConstructor();
-				constructor.setAccessible(true);
-				Object ret = constructor.newInstance();
+				Loader loader = null;
+				Object ret;
+				
+				if(ReflectionUtil.getAnnotatedFileds(clazz, Lazy.class).isEmpty()){
+					Constructor<?> constructor = clazz.getDeclaredConstructor();
+					constructor.setAccessible(true);
+					ret = constructor.newInstance();
+				}else {
+					loader = new Loader(clazz,this);
+					ret = Enhancer.create(clazz, new Class[]{LazyAccessor.class}, loader);
+				}
 				
 				if(id!=null)
 					cache.put(id, ret);
 				
-				for(Field f:ReflectionUtil.getFields(clazz))
-					f.set(ret, parse(m.get(f.getName()), f.getGenericType(), cache, null));
+				for(Field f:ReflectionUtil.getFields(clazz)){
+					Type t = f.getGenericType();
+					Object e = m.get(f.getName());
+										
+					if(f.isAnnotationPresent(Lazy.class)){
+						if(e instanceof List){
+							@SuppressWarnings({ "rawtypes", "unchecked" })
+							LazyList l = new LazyList((List)e, this, getFirstGenericClass(t)); 
+							f.set(ret, l);
+						}else{
+							loader.toLoad(f.getName(),(String)e);
+						}
+					} else {
+						f.set(ret, parse(e, t, cache, null));
+					}
+				}
 
 				if(id!=null)
 					ReflectionUtil.setId(ret, id);
 				return ret;
-			} catch (InstantiationException e) {
-				throw new OsemException("Can't create instance", e);
 			} catch (IllegalAccessException e) {
 				throw new OsemException("Can't create instance", e);
 			} catch (SecurityException e) {
 				throw new OsemException("Can't create instance", e);
-			} catch (NoSuchMethodException e) {
-				throw new OsemException("Can't create instance", e);
 			} catch (IllegalArgumentException e) {
 				throw new OsemException("Can't create instance", e);
+			} catch (NoSuchMethodException e) {
+				e.printStackTrace();
+			} catch (InstantiationException e) {
+				e.printStackTrace();
 			} catch (InvocationTargetException e) {
-				throw new OsemException("Can't create instance", e);
-			}
+				e.printStackTrace();
+			} 
 		}
 		//TODO deserialize maps
 		throw new OsemException("Unexpected type: "+type);
@@ -324,24 +348,46 @@ class OsemManagerImpl implements OsemManager {
 		return (E) parse(map,clazz,new HashMap<String,Object>(),id);
 	}
 	
-	private static Object split(Object entity, Map<String,Object> cache){
+	private static String getLazyValue(Object entity,Field f){
+		if(entity instanceof LazyAccessor){
+			return ((LazyAccessor) entity).CGLIB$getLazyField(f.getName());
+		}
+		
+		return null;
+	}
+	
+	private static Class<?> getRealClass(Class<?> c){
+		return Enhancer.isEnhanced(c) ? c.getSuperclass() : c;
+	}
+	
+	private static Object split(Object entity, Map<String,Object> cache, boolean loadLazy){
 		
 		if(entity == null)return null;
+		
 		if(entity instanceof String)return entity;
 		if(entity instanceof Number)return entity;
+		if(loadLazy && (entity instanceof LazyList)){
+			LazyList<?> l = (LazyList<?>) entity;
+			List<Object> r = new ArrayList<Object>();
+			for(Object obj:l.combined())
+				r.add(split(obj,cache,loadLazy));
+		}
 		if(entity instanceof List){
 			List<?> l = (List<?>) entity;
 			List<Object> r = new ArrayList<Object>();
 			for(Object obj:l)
-				r.add(split(obj,cache));
+				r.add(split(obj,cache,loadLazy));
 			return r;
 		}
 		
-		if(ReflectionUtil.getAnnotatedFileds(entity.getClass(), Id.class).isEmpty()){
+		Class<?> clazz = getRealClass(entity.getClass());
+		
+		if(ReflectionUtil.getAnnotatedFileds(clazz, Id.class).isEmpty()){
 			Map<String,Object> map = new HashMap<String, Object>();
-			for(Field f:ReflectionUtil.getFields(entity.getClass()))
+			for(Field f:ReflectionUtil.getFields(clazz))
 				try {
-					map.put(f.getName(), split(f.get(entity),cache));
+					String lazyValue = getLazyValue(entity,f);
+					map.put(f.getName(), lazyValue != null ? lazyValue : split(f.get(entity),cache,loadLazy));
 				} catch (IllegalArgumentException e) {
 					throw new OsemException("Can't access field "+f.getName()+" in class "+entity.getClass(),e);
 				} catch (IllegalAccessException e) {
@@ -354,18 +400,19 @@ class OsemManagerImpl implements OsemManager {
 		
 		tree.id = ReflectionUtil.ensureId(entity);
 		tree.original = entity;
-		tree.clazz = entity.getClass();
+		tree.clazz = clazz;
 				
 		if(cache.containsKey(tree.id))
 			return cache.get(tree.id);
 		cache.put(tree.id, tree);
 		
-		for(Field f:ReflectionUtil.getFields(entity.getClass())){
+		for(Field f:ReflectionUtil.getFields(clazz)){
 			
 			if(f.isAnnotationPresent(Id.class))continue;
+			String lazyValue = getLazyValue(entity,f);
 			
 			try {
-				Object obj = tree.map.put(f.getName(), split(f.get(entity),cache));
+				Object obj = tree.map.put(f.getName(), lazyValue != null ? lazyValue : split(f.get(entity),cache,loadLazy));
 				if(obj != null)
 					throw new OsemException("Not unique field "+f.getName()+" in class "+entity.getClass().getName());
 			} catch (IllegalArgumentException e) {
@@ -400,8 +447,8 @@ class OsemManagerImpl implements OsemManager {
 		}
 	}
 	
-	private <E> E mapping(String id, E entity, boolean refresh) throws Exception {
-		Object tree = split(entity,new HashMap<String,Object>());
+	private <E> E mapping(E entity, boolean refresh) throws Exception {
+		Object tree = split(entity,new HashMap<String,Object>(),false);
 		Set<MapWrapper> objects = new HashSet<MapWrapper>();
 		toPlain((MapWrapper) tree,objects);
 		
@@ -434,19 +481,19 @@ class OsemManagerImpl implements OsemManager {
 	}
 	
 	private void delete(Object entity,Class<?> clazz,boolean refresh) {
-		Object tree = split(entity,new HashMap<String,Object>());
+		Object tree = split(entity,new HashMap<String,Object>(),true);
 		Set<MapWrapper> objects = new HashSet<MapWrapper>();
 		toPlain((MapWrapper) tree,objects);
 		
 		BulkRequestBuilder builder = client.getClient()
-				.prepareBulk().setRefresh(true);
+				.prepareBulk().setRefresh(refresh);
 		for(MapWrapper obj:objects){
 			consistencyCache.remove(new Key(obj.clazz, obj.id));
 			builder.add(client.getClient()
 						.prepareDelete(
 								getIndexName(obj.clazz),
 								getTypeName(obj.clazz),
-								obj.id));
+								obj.id).setRefresh(refresh));
 		}
 		
 		builder.execute().actionGet();
@@ -532,6 +579,8 @@ class OsemManagerImpl implements OsemManager {
 	}
 
 	public String getTypeName(Class<?> clazz) {
+		if(Enhancer.isEnhanced(clazz))
+			clazz = clazz.getSuperclass();
 		return clazz.getName().toLowerCase().trim().replace('.', '_');
 	}
 	
@@ -545,6 +594,11 @@ class OsemManagerImpl implements OsemManager {
 	@Override
 	public void complete(Class<?> cl) {
 		
+	}
+
+	@Override
+	public void dropCache() {
+		consistencyCache.clear();
 	}
 	
 }

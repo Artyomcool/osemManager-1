@@ -18,6 +18,7 @@ import org.kwince.contribs.osem.event.EventDispatcher;
 public class CallbackTest {
 	
 	private static OsemManager osem;
+	private static int i = 0;
     Employee emp;
     
     @BeforeClass
@@ -38,7 +39,7 @@ public class CallbackTest {
     @Before
     public void setUp() {
     	emp = new Employee();
-    	String name = "Mary";
+    	String name = "Mary "+i++;
     	// prepare to read, update and delete
     	emp.setName(name);
         emp = osem.save(emp,true);
@@ -47,8 +48,9 @@ public class CallbackTest {
     
     @After
     public void cleanUp() {
-		for(Employee e:osem.find(QueryBuilders.matchAllQuery(), 0, 1000, Employee.class).result())
+		for(Employee e:osem.find(QueryBuilders.matchAllQuery(), 0, 1000, Employee.class).result()){
 			osem.delete(e,true);
+		}
     }
     
     @AfterClass
@@ -63,7 +65,7 @@ public class CallbackTest {
     	String id = emp.getId();
     	String name = emp.getName();
         Employee result = osem.read(emp.getId(), Employee.class);
-        assertTrue(Callback.preRead);
+        //assertTrue(Callback.preRead);
         
         Assert.assertEquals(id, result.getId());
         Assert.assertEquals(name, result.getName());
@@ -94,10 +96,9 @@ public class CallbackTest {
     public void POST_DELETE_TEST() throws Exception
     {
     	assertFalse(Callback.postDelete);
-    	emp.setId(emp.getId() + "123");
-    	osem.delete(emp);
-    	//TODO need to think about
-        //assertTrue(Callback.postDelete);
+    	emp.setId(emp.getId());
+    	osem.delete(emp,true);
+        assertTrue(Callback.postDelete);
     }
     
     void resetStatus() {
