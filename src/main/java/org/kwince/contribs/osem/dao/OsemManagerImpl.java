@@ -3,6 +3,7 @@ package org.kwince.contribs.osem.dao;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortOrder;
 import org.kwince.contribs.osem.annotations.Id;
 import org.kwince.contribs.osem.annotations.Lazy;
+import org.kwince.contribs.osem.annotations.Syntetic;
 import org.kwince.contribs.osem.annotations.hooks.PostOsemDelete;
 import org.kwince.contribs.osem.annotations.hooks.PostOsemRead;
 import org.kwince.contribs.osem.annotations.hooks.PostOsemSave;
@@ -398,6 +400,16 @@ class OsemManagerImpl implements OsemManager {
 				} catch (IllegalAccessException e) {
 					throw new OsemException("Can't access field "+f.getName()+" in class "+entity.getClass(),e);
 				}
+			for(Method m:ReflectionUtil.getAnnotatedMethods(clazz, Syntetic.class))
+				try {
+					map.put(m.getAnnotation(Syntetic.class).value(), split(m.invoke(entity),cache,loadLazy));
+				} catch (IllegalArgumentException e) {
+					throw new OsemException("Can't access method "+m.getName()+" in class "+entity.getClass(),e);
+				} catch (IllegalAccessException e) {
+					throw new OsemException("Can't access method "+m.getName()+" in class "+entity.getClass(),e);
+				} catch (InvocationTargetException e) {
+					throw new OsemException("Can't access method "+m.getName()+" in class "+entity.getClass(),e);
+				}
 			return map;
 		}
 
@@ -424,6 +436,19 @@ class OsemManagerImpl implements OsemManager {
 				throw new OsemException("Can't access field "+f.getName()+" in class "+entity.getClass(),e);
 			} catch (IllegalAccessException e) {
 				throw new OsemException("Can't access field "+f.getName()+" in class "+entity.getClass(),e);
+			}
+		}
+		for(Method m:ReflectionUtil.getAnnotatedMethods(clazz, Syntetic.class)){
+			try {
+				Object obj = tree.map.put(m.getAnnotation(Syntetic.class).value(), split(m.invoke(entity),cache,loadLazy));
+				if(obj != null)
+					throw new OsemException("Not unique method "+m.getName()+" in class "+entity.getClass().getName());
+			} catch (IllegalArgumentException e) {
+				throw new OsemException("Can't access method "+m.getName()+" in class "+entity.getClass(),e);
+			} catch (IllegalAccessException e) {
+				throw new OsemException("Can't access method "+m.getName()+" in class "+entity.getClass(),e);
+			} catch (InvocationTargetException e) {
+				throw new OsemException("Can't access method "+m.getName()+" in class "+entity.getClass(),e);
 			}
 		}
 		return tree;
@@ -560,6 +585,10 @@ class OsemManagerImpl implements OsemManager {
 				map.put(f.getName(),
 						toType(f.getGenericType(),f.getAnnotation(Mapping.class)));
 		}
+		
+		for(Method m:ReflectionUtil.getAnnotatedMethods(clazz, Syntetic.class))
+			map.put(m.getAnnotation(Syntetic.class).value(),
+					toType(m.getGenericReturnType(),m.getAnnotation(Mapping.class)));
 		
 		return map;
 	}

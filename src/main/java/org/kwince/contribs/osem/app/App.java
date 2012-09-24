@@ -7,6 +7,7 @@ import java.util.List;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.kwince.contribs.osem.annotations.Id;
+import org.kwince.contribs.osem.annotations.Syntetic;
 import org.kwince.contribs.osem.annotations.mapping.Mapping;
 import org.kwince.contribs.osem.annotations.mapping.StringParam;
 import org.kwince.contribs.osem.common.ElasticClientFactory;
@@ -39,6 +40,17 @@ public class App
 		private double data = Math.random();
 		private List<TestB> children = new ArrayList<App.TestB>();
 		
+		@Syntetic("myField")
+		@Mapping(
+				stringParams={
+						@StringParam(name="store",value="yes")
+				}
+		)
+		@SuppressWarnings("unused")
+		private int getSynteticField(){
+			return (int) (data*100);
+		}
+		
 		public void add(TestB b){
 			children.add(b);
 			b.parent = this;
@@ -63,7 +75,7 @@ public class App
 					+ "]";
 		}
 	}
-	
+		
     public static void main( String[] args )
     {
     	OsemMangerFactory factory = new OsemMangerFactory();

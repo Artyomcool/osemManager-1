@@ -2,6 +2,7 @@ package org.kwince.contribs.osem.util;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -31,6 +32,23 @@ public class ReflectionUtil
 		return result;
 	}
 	
+	public static List<Method> getMethods(Class<?> clazz){
+		List<Method> result = new ArrayList<Method>();
+		if(clazz.isInterface())return result;
+		
+		while(clazz != Object.class){
+			Method[] fields = clazz.getDeclaredMethods();
+			for(Method f:fields){
+				if((f.getModifiers() & Modifier.TRANSIENT) != 0)
+					continue;
+				f.setAccessible(true);
+				result.add(f);
+			}
+			clazz = clazz.getSuperclass();
+		}
+		return result;
+	}
+	
 	public static List<Field> getAnnotatedFileds(Class<?> clazz, Class<? extends Annotation> annotationClass) {
 		
 		List<Field> allFields = getFields(clazz);
@@ -42,6 +60,19 @@ public class ReflectionUtil
 		}
 
 		return annotatedFields;
+	}
+
+	public static List<Method> getAnnotatedMethods(Class<?> clazz, Class<? extends Annotation> annotationClass) {
+		
+		List<Method> allMethods = getMethods(clazz);
+		List<Method> annotatedMethods = new LinkedList<Method>();
+
+		for (Method field : allMethods) {
+			if(field.isAnnotationPresent(annotationClass))
+				annotatedMethods.add(field);
+		}
+
+		return annotatedMethods;
 	}
 		
 	private static Field getIdField(Class<?> clazz){
