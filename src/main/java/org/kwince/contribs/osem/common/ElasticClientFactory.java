@@ -29,9 +29,6 @@ public class ElasticClientFactory {
 						
 		Builder settings = ImmutableSettings.settingsBuilder();
 
-		settings.put("index.number_of_shards", 16);
-		settings.put("index.number_of_replicas", 1);
-
 		if(path!=null)
 			settings.put("path.home", path);
 		

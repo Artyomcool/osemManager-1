@@ -550,7 +550,7 @@ class OsemManagerImpl implements OsemManager {
 	private void ensureIndex(Class<?> clazz) {
 		if(indexNames.containsKey(clazz))return;
 		
-		client.getClient().admin().cluster().prepareHealth().setWaitForGreenStatus().execute().actionGet();
+		client.getClient().admin().cluster().prepareHealth().setWaitForYellowStatus().execute().actionGet();
 		
 		String name = getIndexName(clazz);
 		
