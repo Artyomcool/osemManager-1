@@ -27,12 +27,17 @@ import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortOrder;
 import org.kwince.contribs.osem.annotations.Id;
 import org.kwince.contribs.osem.annotations.Lazy;
-import org.kwince.contribs.osem.annotations.PostOsemDelete;
-import org.kwince.contribs.osem.annotations.PostOsemRead;
-import org.kwince.contribs.osem.annotations.PostOsemSave;
-import org.kwince.contribs.osem.annotations.PreOsemDelete;
-import org.kwince.contribs.osem.annotations.PreOsemRead;
-import org.kwince.contribs.osem.annotations.PreOsemSave;
+import org.kwince.contribs.osem.annotations.hooks.PostOsemDelete;
+import org.kwince.contribs.osem.annotations.hooks.PostOsemRead;
+import org.kwince.contribs.osem.annotations.hooks.PostOsemSave;
+import org.kwince.contribs.osem.annotations.hooks.PreOsemDelete;
+import org.kwince.contribs.osem.annotations.hooks.PreOsemRead;
+import org.kwince.contribs.osem.annotations.hooks.PreOsemSave;
+import org.kwince.contribs.osem.annotations.mapping.BooleanParam;
+import org.kwince.contribs.osem.annotations.mapping.DoubleParam;
+import org.kwince.contribs.osem.annotations.mapping.IntParam;
+import org.kwince.contribs.osem.annotations.mapping.Mapping;
+import org.kwince.contribs.osem.annotations.mapping.StringParam;
 import org.kwince.contribs.osem.common.ClientWrapper;
 import org.kwince.contribs.osem.common.WeakCache;
 import org.kwince.contribs.osem.event.EventDispatcher;
@@ -514,26 +519,36 @@ class OsemManagerImpl implements OsemManager {
 		primitives.put(String.class, "string");
 	}
 	
-	private Map<String,Object> toType(String type){
-		return toObjectType("type",type);
+	private Map<String,Object> toType(String type,Mapping mappings){
+		return toObjectType("type",type,mappings);
 	}
 	
-	private Map<String,Object> toObjectType(String name,Object type){
+	private Map<String,Object> toObjectType(String name,Object type,Mapping mappings){
 		Map<String,Object> map = new HashMap<String, Object>();
 		map.put(name, type);
+		if(mappings!=null){
+			for(IntParam i:mappings.intParams())
+				map.put(i.name(), i.value());
+			for(BooleanParam i:mappings.booleanParams())
+				map.put(i.name(), i.value());
+			for(StringParam i:mappings.stringParams())
+				map.put(i.name(), i.value());
+			for(DoubleParam i:mappings.doubleParams())
+				map.put(i.name(), i.value());
+		}
 		return map;
 	}
 	
-	private Object toType(Type f){
+	private Object toType(Type f,Mapping mappings){
 		if(f instanceof ParameterizedType && Collection.class.isAssignableFrom((Class<?>)((ParameterizedType) f).getRawType()))
-			return toType(getFirstGenericClass(f));
+			return toType(getFirstGenericClass(f),mappings);
 		Class<?> c = (Class<?>) f;
 		if(primitives.containsKey(c))
-			return toType(primitives.get(c));
+			return toType(primitives.get(c),mappings);
 		else if(ReflectionUtil.getAnnotatedFileds(c, Id.class).isEmpty())
-			return toObjectType("properties",getMapping(c));
+			return toObjectType("properties",getMapping(c),mappings);
 		else
-			return toType("string");
+			return toType("string",mappings);
 	}
 	
 	private Object getMapping(Class<?> clazz){
@@ -541,7 +556,9 @@ class OsemManagerImpl implements OsemManager {
 		Map<String,Object> map = new HashMap<String, Object>();
 		
 		for(Field f:ReflectionUtil.getFields(clazz)){
-			map.put(f.getName(), toType(f.getGenericType()));
+			if(!f.isAnnotationPresent(Id.class))
+				map.put(f.getName(),
+						toType(f.getGenericType(),f.getAnnotation(Mapping.class)));
 		}
 		
 		return map;
@@ -562,7 +579,7 @@ class OsemManagerImpl implements OsemManager {
 		}
 		
 		
-		Map<String,Object> src = toObjectType(name, toObjectType("properties",getMapping(clazz)));
+		Map<String,Object> src = toObjectType(name, toObjectType("properties",getMapping(clazz),null),null);
 		
 		client.getClient().admin().indices()
 			.preparePutMapping(name)

@@ -1,4 +1,4 @@
-package org.kwince.contribs.osem.annotations;
+package org.kwince.contribs.osem.annotations.hooks;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -10,5 +10,6 @@ import java.lang.annotation.Target;
 @Documented @Inherited
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
-public @interface PreOsemSave {
+public @interface PostOsemRead {
+
 }

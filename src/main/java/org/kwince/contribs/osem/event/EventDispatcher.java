@@ -12,12 +12,12 @@ import java.util.Map;
 import java.util.Set;
 
 import org.elasticsearch.common.collect.Sets;
-import org.kwince.contribs.osem.annotations.PostOsemSave;
-import org.kwince.contribs.osem.annotations.PostOsemDelete;
-import org.kwince.contribs.osem.annotations.PostOsemRead;
-import org.kwince.contribs.osem.annotations.PreOsemSave;
-import org.kwince.contribs.osem.annotations.PreOsemDelete;
-import org.kwince.contribs.osem.annotations.PreOsemRead;
+import org.kwince.contribs.osem.annotations.hooks.PostOsemDelete;
+import org.kwince.contribs.osem.annotations.hooks.PostOsemRead;
+import org.kwince.contribs.osem.annotations.hooks.PostOsemSave;
+import org.kwince.contribs.osem.annotations.hooks.PreOsemDelete;
+import org.kwince.contribs.osem.annotations.hooks.PreOsemRead;
+import org.kwince.contribs.osem.annotations.hooks.PreOsemSave;
 import org.kwince.contribs.osem.exceptions.OsemException;
 import org.kwince.contribs.osem.util.ReflectionUtil;
 

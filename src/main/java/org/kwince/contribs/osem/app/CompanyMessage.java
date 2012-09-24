@@ -1,9 +1,9 @@
 package org.kwince.contribs.osem.app;
 
-import org.kwince.contribs.osem.annotations.PostOsemSave;
-import org.kwince.contribs.osem.annotations.PostOsemRead;
-import org.kwince.contribs.osem.annotations.PreOsemSave;
-import org.kwince.contribs.osem.annotations.PreOsemRead;
+import org.kwince.contribs.osem.annotations.hooks.PostOsemRead;
+import org.kwince.contribs.osem.annotations.hooks.PostOsemSave;
+import org.kwince.contribs.osem.annotations.hooks.PreOsemRead;
+import org.kwince.contribs.osem.annotations.hooks.PreOsemSave;
 import org.kwince.contribs.osem.model.Company;
 
 public class CompanyMessage {

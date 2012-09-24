@@ -1,4 +1,4 @@
-package org.kwince.contribs.osem.annotations;
+package org.kwince.contribs.osem.annotations.hooks;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
