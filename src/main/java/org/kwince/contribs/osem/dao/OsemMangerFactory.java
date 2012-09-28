@@ -3,6 +3,11 @@ package org.kwince.contribs.osem.dao;
 import org.kwince.contribs.osem.common.ElasticClientFactory;
 import org.kwince.contribs.osem.event.EventDispatcher;
 
+/**
+ * Factory to create OsemManagers
+ * @author Artyomcool
+ *
+ */
 public class OsemMangerFactory {
 	
 	private ElasticClientFactory elastic;
@@ -17,7 +22,7 @@ public class OsemMangerFactory {
 	}
 		
 	public OsemManager createOsemManager() {
-		return new OsemManagerImpl(elastic.createNode(), dispatcher);
+		return new OsemManagerImpl(elastic.createClient(), dispatcher);
 	}
 	
 }

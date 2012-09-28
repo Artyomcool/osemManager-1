@@ -3,6 +3,12 @@ package org.kwince.contribs.osem.dao;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Results for searching from ES
+ * @author Artyomcool
+ *
+ * @param <E>
+ */
 public class SearchResult<E> {
 
 	private final long total;

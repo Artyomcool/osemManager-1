@@ -7,7 +7,8 @@ import java.util.List;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.kwince.contribs.osem.annotations.Id;
-import org.kwince.contribs.osem.annotations.Syntetic;
+import org.kwince.contribs.osem.annotations.Lazy;
+import org.kwince.contribs.osem.annotations.Synthetic;
 import org.kwince.contribs.osem.annotations.mapping.Mapping;
 import org.kwince.contribs.osem.annotations.mapping.StringParam;
 import org.kwince.contribs.osem.common.ElasticClientFactory;
@@ -40,7 +41,7 @@ public class App
 		private double data = Math.random();
 		private List<TestB> children = new ArrayList<App.TestB>();
 		
-		@Syntetic("myField")
+		@Synthetic("myField")
 		@Mapping(
 				stringParams={
 						@StringParam(name="store",value="yes")

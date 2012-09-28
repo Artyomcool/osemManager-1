@@ -13,6 +13,12 @@ import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
 import org.kwince.contribs.osem.exceptions.OsemException;
 
+/**
+ * Factory to create a client.
+ * Uses a {@link ClientWrapper} to wrap different configuration.
+ * @author Artyomcool
+ *
+ */
 public class ElasticClientFactory {
 	
 	private Boolean nodeClient;
@@ -25,7 +31,11 @@ public class ElasticClientFactory {
 	private String port;
 	private Boolean clientTransportSniff;
 	
-	public ClientWrapper createNode() {
+	/**
+	 * Creates a {@link ClientWrapper} from configuration
+	 * @return {@link ClientWrapper}
+	 */
+	public ClientWrapper createClient() {
 						
 		Builder settings = ImmutableSettings.settingsBuilder();
 
@@ -114,6 +124,11 @@ public class ElasticClientFactory {
 		return this;
 	}
 	
+	/**
+	 * Sets configuration from properties file. Path could start with <code>"classpath:"</code>.
+	 * @param path the path to properties file
+	 * @return the same <b>ElasticClientFactory</b> to reuse
+	 */
 	public ElasticClientFactory setProperties(String path){
 		Properties p = new Properties();
 		try {

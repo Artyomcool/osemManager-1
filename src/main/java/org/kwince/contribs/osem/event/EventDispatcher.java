@@ -21,6 +21,11 @@ import org.kwince.contribs.osem.annotations.hooks.PreOsemSave;
 import org.kwince.contribs.osem.exceptions.OsemException;
 import org.kwince.contribs.osem.util.ReflectionUtil;
 
+/**
+ * Dispatcher for Osem events
+ * @author Artyomcool
+ *
+ */
 public class EventDispatcher {
 	
 	private static class HandlerInfo{

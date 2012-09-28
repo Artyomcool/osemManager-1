@@ -28,7 +28,7 @@ import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortOrder;
 import org.kwince.contribs.osem.annotations.Id;
 import org.kwince.contribs.osem.annotations.Lazy;
-import org.kwince.contribs.osem.annotations.Syntetic;
+import org.kwince.contribs.osem.annotations.Synthetic;
 import org.kwince.contribs.osem.annotations.hooks.PostOsemDelete;
 import org.kwince.contribs.osem.annotations.hooks.PostOsemRead;
 import org.kwince.contribs.osem.annotations.hooks.PostOsemSave;
@@ -47,8 +47,18 @@ import org.kwince.contribs.osem.exceptions.OsemException;
 import org.kwince.contribs.osem.util.ReflectionUtil;
 import org.kwince.contribs.osem.validation.Validator;
 
+/**
+ * Default realisation of {@link OsemManager}
+ * @author Artyomcool
+ *
+ */
 class OsemManagerImpl implements OsemManager {
 	
+	/**
+	 * Key - combines Class and Id
+	 * @author Artyomcool
+	 *
+	 */
 	private static class Key{
 		private Class<?> clazz;
 		private String id;
@@ -88,14 +98,49 @@ class OsemManagerImpl implements OsemManager {
 		}
 	}
 	
+	/**
+	 * Names of primitives
+	 */
+	private static Map<Class<?>,String> primitives = new HashMap<Class<?>, String>();
+	static{
+		primitives.put(Integer.class, "integer");
+		primitives.put(Long.class, "long");
+		primitives.put(Float.class, "float");
+		primitives.put(Double.class, "double");
+		primitives.put(Boolean.class, "boolean");
+		primitives.put(Integer.TYPE, "integer");
+		primitives.put(Long.TYPE, "long");
+		primitives.put(Float.TYPE, "float");
+		primitives.put(Double.TYPE, "double");
+		primitives.put(Boolean.TYPE, "boolean");
+		primitives.put(String.class, "string");
+	}
+	
+	/**
+	 * Event dispatcher to dispatch Osem events
+	 */
 	private EventDispatcher dispatcher;
 	
+	/**
+	 * ES client
+	 */
 	private ClientWrapper client;
 	
+	/**
+	 * Cache for index names
+	 */
 	private Map<Class<?>,String> indexNames = new HashMap<Class<?>,String>();
 	
+	/**
+	 * Cache for object consistency
+	 */
 	private WeakCache<Key, Object> consistencyCache = new WeakCache<Key, Object>();
 	
+	/**
+	 * Default constructor
+	 * @param client
+	 * @param dispatcher
+	 */
 	OsemManagerImpl (ClientWrapper client,EventDispatcher dispatcher) {
 		this.client = client;
 		this.dispatcher = dispatcher;
@@ -210,6 +255,23 @@ class OsemManagerImpl implements OsemManager {
 		return countResponse.getCount();
 	}
 	
+	public void close(){
+		if(client!=null){
+			client.close();
+		}
+		client.close();
+	}
+
+	@Override
+	public void dropCache() {
+		consistencyCache.clear();
+	}
+	
+	/**
+	 * Class for wrapping object while split them into map tree
+	 * @author Artyomcool
+	 *
+	 */
 	private static class MapWrapper{
 		private Object original;
 		private Map<String,Object> map = new HashMap<String,Object>();
@@ -245,6 +307,11 @@ class OsemManagerImpl implements OsemManager {
 		}
 	}
 	
+	/**
+	 * Returns class of the first generic param 
+	 * @param type
+	 * @return
+	 */
 	private Class<?> getFirstGenericClass(Type type){
 		
 		if(!(type instanceof ParameterizedType))
@@ -258,6 +325,15 @@ class OsemManagerImpl implements OsemManager {
 		return fieldArgClass;
 	}
 	
+	/**
+	 * Returns an entity from map or primitive type, reading foreign keys form ES and replacing
+	 * lazy objects with generated class
+	 * @param entity object that was read from ES
+	 * @param type the object class
+	 * @param cache map to store read values - useful to work-around double reading
+	 * @param id the identifier of the object
+	 * @return parsed object
+	 */
 	private Object parse(Object entity,Type type,Map<String,Object> cache, String id){
 				
 		if(entity == null)return null;
@@ -350,11 +426,24 @@ class OsemManagerImpl implements OsemManager {
 		throw new OsemException("Unexpected type: "+type);
 	}
 	
+	/**
+	 * Creates object from map
+	 * @param map ES representation of the object
+	 * @param clazz class of the object 
+	 * @param id object identifier
+	 * @return parsed object
+	 */
 	@SuppressWarnings("unchecked")
 	private <E> E createObject(Map<String,Object> map,Class<E> clazz,String id){
 		return (E) parse(map,clazz,new HashMap<String,Object>(),id);
 	}
 	
+	/**
+	 * Returns an id of lazy-loading field or null if field isn't lazy-loading 
+	 * @param entity object contains the field
+	 * @param f field to get
+	 * @return id
+	 */
 	private static String getLazyValue(Object entity,Field f){
 		if(entity instanceof LazyAccessor){
 			return ((LazyAccessor) entity).CGLIB$getLazyField(f.getName());
@@ -363,10 +452,22 @@ class OsemManagerImpl implements OsemManager {
 		return null;
 	}
 	
+	/**
+	 * If class is enhanced returns super class, in other cases returns the same class.
+	 * @param c class to check for being enhanced
+	 * @return super class or the same class 
+	 */
 	private static Class<?> getRealClass(Class<?> c){
 		return Enhancer.isEnhanced(c) ? c.getSuperclass() : c;
 	}
 	
+	/**
+	 * Splits an object into tree-map
+	 * @param entity the object to split
+	 * @param cache a work-around for infinity splitting the same objects
+	 * @param loadLazy if needs load lazy objects
+	 * @return tree-map
+	 */
 	private static Object split(Object entity, Map<String,Object> cache, boolean loadLazy){
 		
 		if(entity == null)return null;
@@ -400,9 +501,9 @@ class OsemManagerImpl implements OsemManager {
 				} catch (IllegalAccessException e) {
 					throw new OsemException("Can't access field "+f.getName()+" in class "+entity.getClass(),e);
 				}
-			for(Method m:ReflectionUtil.getAnnotatedMethods(clazz, Syntetic.class))
+			for(Method m:ReflectionUtil.getAnnotatedMethods(clazz, Synthetic.class))
 				try {
-					map.put(m.getAnnotation(Syntetic.class).value(), split(m.invoke(entity),cache,loadLazy));
+					map.put(m.getAnnotation(Synthetic.class).value(), split(m.invoke(entity),cache,loadLazy));
 				} catch (IllegalArgumentException e) {
 					throw new OsemException("Can't access method "+m.getName()+" in class "+entity.getClass(),e);
 				} catch (IllegalAccessException e) {
@@ -438,9 +539,9 @@ class OsemManagerImpl implements OsemManager {
 				throw new OsemException("Can't access field "+f.getName()+" in class "+entity.getClass(),e);
 			}
 		}
-		for(Method m:ReflectionUtil.getAnnotatedMethods(clazz, Syntetic.class)){
+		for(Method m:ReflectionUtil.getAnnotatedMethods(clazz, Synthetic.class)){
 			try {
-				Object obj = tree.map.put(m.getAnnotation(Syntetic.class).value(), split(m.invoke(entity),cache,loadLazy));
+				Object obj = tree.map.put(m.getAnnotation(Synthetic.class).value(), split(m.invoke(entity),cache,loadLazy));
 				if(obj != null)
 					throw new OsemException("Not unique method "+m.getName()+" in class "+entity.getClass().getName());
 			} catch (IllegalArgumentException e) {
@@ -454,6 +555,12 @@ class OsemManagerImpl implements OsemManager {
 		return tree;
 	}
 	
+	/**
+	 * Extracts nodes of the tree, splitted by {@link OsemManagerImpl#split(Object, Map, boolean)}
+	 * and puts them into <b>plain</b> Set. Also replaced nodes with theirs ids.
+	 * @param tree the splitted tree
+	 * @param plain the set to put splitted objects
+	 */
 	@SuppressWarnings("unchecked")
 	private static void toPlain(MapWrapper tree,Set<MapWrapper> plain){
 		if(!plain.add(tree))return;
@@ -477,6 +584,13 @@ class OsemManagerImpl implements OsemManager {
 		}
 	}
 	
+	/**
+	 * Maps an entity to the ES
+	 * @param entity to map
+	 * @param refresh if true, index will refreshed immediately. May be slow.
+	 * @return mapped entity
+	 * @throws Exception
+	 */
 	private <E> E mapping(E entity, boolean refresh) throws Exception {
 		Object tree = split(entity,new HashMap<String,Object>(),false);
 		Set<MapWrapper> objects = new HashSet<MapWrapper>();
@@ -497,6 +611,13 @@ class OsemManagerImpl implements OsemManager {
 		return entity;
 	}
 	
+	/**
+	 * Reads object from ES
+	 * @param id an identifier
+	 * @param clazz class of the entity
+	 * @param cache the work-around for reading the same entity twice
+	 * @return read entity
+	 */
 	private <E> E readInternal(String id, Class<E> clazz, Map<String,Object> cache) {
 		GetResponse result = client.getClient().prepareGet(getIndexName(clazz), getTypeName(clazz), id).setRefresh(true).execute().actionGet();
         if (!result.isExists()) {
@@ -510,6 +631,12 @@ class OsemManagerImpl implements OsemManager {
 		return entity;
 	}
 	
+	/**
+	 * Deletes entity from ES
+	 * @param entity to delete
+	 * @param clazz class of entity
+	 * @param refresh if true, index will be refreshed immediately (will be slow)
+	 */
 	private void delete(Object entity,Class<?> clazz,boolean refresh) {
 		Object tree = split(entity,new HashMap<String,Object>(),true);
 		Set<MapWrapper> objects = new HashSet<MapWrapper>();
@@ -529,25 +656,18 @@ class OsemManagerImpl implements OsemManager {
 		builder.execute().actionGet();
 	}
 	
-	private static Map<Class<?>,String> primitives = new HashMap<Class<?>, String>();
-	static{
-		primitives.put(Integer.class, "integer");
-		primitives.put(Long.class, "long");
-		primitives.put(Float.class, "float");
-		primitives.put(Double.class, "double");
-		primitives.put(Boolean.class, "boolean");
-		primitives.put(Integer.TYPE, "integer");
-		primitives.put(Long.TYPE, "long");
-		primitives.put(Float.TYPE, "float");
-		primitives.put(Double.TYPE, "double");
-		primitives.put(Boolean.TYPE, "boolean");
-		primitives.put(String.class, "string");
-	}
 	
 	private Map<String,Object> toType(String type,Mapping mappings){
 		return toObjectType("type",type,mappings);
 	}
 	
+	/**
+	 * Turns an object to map
+	 * @param name field name
+	 * @param type field type
+	 * @param mappings mappings annotation for type
+	 * @return mapping
+	 */
 	private Map<String,Object> toObjectType(String name,Object type,Mapping mappings){
 		Map<String,Object> map = new HashMap<String, Object>();
 		map.put(name, type);
@@ -563,8 +683,14 @@ class OsemManagerImpl implements OsemManager {
 		}
 		return map;
 	}
-	
-	private Object toType(Type f,Mapping mappings){
+
+	/**
+	 * Turns a type to map
+	 * @param f field type
+	 * @param mappings mappings annotation for type
+	 * @return mapping
+	 */
+	private Map<String,Object> toType(Type f,Mapping mappings){
 		if(f instanceof ParameterizedType && Collection.class.isAssignableFrom((Class<?>)((ParameterizedType) f).getRawType()))
 			return toType(getFirstGenericClass(f),mappings);
 		Class<?> c = (Class<?>) f;
@@ -576,7 +702,12 @@ class OsemManagerImpl implements OsemManager {
 			return toType("string",mappings);
 	}
 	
-	private Object getMapping(Class<?> clazz){
+	/**
+	 * Returns mapping for class
+	 * @param clazz
+	 * @return
+	 */
+	private Map<String,Object> getMapping(Class<?> clazz){
 		
 		Map<String,Object> map = new HashMap<String, Object>();
 		
@@ -586,13 +717,17 @@ class OsemManagerImpl implements OsemManager {
 						toType(f.getGenericType(),f.getAnnotation(Mapping.class)));
 		}
 		
-		for(Method m:ReflectionUtil.getAnnotatedMethods(clazz, Syntetic.class))
-			map.put(m.getAnnotation(Syntetic.class).value(),
+		for(Method m:ReflectionUtil.getAnnotatedMethods(clazz, Synthetic.class))
+			map.put(m.getAnnotation(Synthetic.class).value(),
 					toType(m.getGenericReturnType(),m.getAnnotation(Mapping.class)));
 		
 		return map;
 	}
 	
+	/**
+	 * Ensures index is exists an merges the mapping
+	 * @param clazz class for check
+	 */
 	private void ensureIndex(Class<?> clazz) {
 		if(indexNames.containsKey(clazz))return;
 		
@@ -620,31 +755,24 @@ class OsemManagerImpl implements OsemManager {
 		indexNames.put(clazz, name);
 	}
 
+	/**
+	 * Returns index name for class
+	 * @param clazz
+	 * @return
+	 */
 	public String getIndexName(Class<?> clazz) {
 		return getTypeName(clazz);
 	}
 
+	/**
+	 * Returns type name for class
+	 * @param clazz
+	 * @return
+	 */
 	public String getTypeName(Class<?> clazz) {
 		if(Enhancer.isEnhanced(clazz))
 			clazz = clazz.getSuperclass();
 		return clazz.getName().toLowerCase().trim().replace('.', '_');
-	}
-	
-	public void close(){
-		if(client!=null){
-			client.close();
-		}
-		client.close();
-	}
-
-	@Override
-	public void complete(Class<?> cl) {
-		
-	}
-
-	@Override
-	public void dropCache() {
-		consistencyCache.clear();
 	}
 	
 }

@@ -7,18 +7,41 @@ import java.util.Map;
 import net.sf.cglib.proxy.MethodInterceptor;
 import net.sf.cglib.proxy.MethodProxy;
 
+/**
+ * Intercepter for lazy-loading
+ * @author Artyomcool
+ *
+ */
 class Loader implements MethodInterceptor{
 	
+	/**
+	 * Map of pair method-name/id-to-load
+	 */
 	private Map<String,String> fieldsToLoad = new HashMap<String, String>();
 	
+	/**
+	 * Object class
+	 */
 	private Class<?> clazz;
-	private OsemManagerImpl manager;
 	
-	Loader(Class<?> clazz,OsemManagerImpl manager) {
+	/**
+	 * Manager to load
+	 */
+	private OsemManager manager;
+	
+	/**
+	 * Constructs a new Loader
+	 * @param clazz class of object
+	 * @param manager to load entities
+	 */
+	Loader(Class<?> clazz,OsemManager manager) {
 		this.clazz = clazz;
 		this.manager = manager;
 	}
 
+	/**
+	 * Checks fieldsToLoad for field name and loads object if need
+	 */
 	@Override
 	public Object intercept(Object obj, Method method, Object[] args,
 			MethodProxy methodProxy) throws Throwable {
@@ -54,10 +77,21 @@ class Loader implements MethodInterceptor{
 		return methodProxy.invokeSuper(obj, args);
 	}
 	
+	/**
+	 * Loads object
+	 * @param id identifier of object to load
+	 * @param clazz class to load
+	 * @return loaded object
+	 */
 	private Object load(String id,Class<?> clazz){
 		return manager.read(id, clazz);
 	}
 
+	/**
+	 * Adds field to load
+	 * @param name field name
+	 * @param id object id
+	 */
 	void toLoad(String name, String id) {
 		fieldsToLoad.put(name, id);
 	}
