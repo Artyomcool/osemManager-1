@@ -25,3 +25,4 @@ NOT GOING to DO: (unless I get rich or REALLY see the need to do it)
 2/ Enterprise entity management. An even MORE over arching management of entities, as to versioning, detached entities, and other such stuff. Very cool stuff, admirable, NOT going to happen without a lot of help and money. Don't want to reinvent the wheel either. And I don't need it now anyway.
 
 For both of the 'Not going to do its' above, if you want 'em, code 'em and contribute 'em. 
+
